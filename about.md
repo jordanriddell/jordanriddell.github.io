@@ -4,12 +4,8 @@ title: About
 permalink: /about/
 ---
 
-Some information about you!
-
-### More Information
-
-A place to include any other types of information that you'd like to include about yourself.
+Criminology & Criminal Justice PhD Student at the University of Texas at Dallas. Research interests include spatial and temporal crime analysis and a whole lot of other things.
 
 ### Contact me
 
-[jordan.riddell@utdallas.edu](mailto:email@domain.com)
+[jordan.riddell@utdallas.edu](mailto:jordan.riddell@utdallas.edu)
