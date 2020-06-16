@@ -1,0 +1,94 @@
+---
+layout: post
+title: Twitter Data Using RTweet
+---
+
+This post will detail how to use RTweet and your Twitter developer account to download and plot Twitter data. The following steps explain how to download tweets from the Dallas Police Department Twitter account.
+
+First, make sure to have received access to a Twitter developer account. Make an app and, and then make sure to save the app name, API keys, and access tokens for future use. Then, make sure you have an up to date version of R and RStudio.
+
+The following chunk of code will set you up to be able to download Twitter data using your own developer account. For this blog, we'll only pull 1,000 tweets by and @ the Dallas Police Department's Twitter account. You'll notice two things using the API method and RTweet compared to using GetOldTweets and Python: the API gets richer data but over a shorter time period.
+
+```
+## Twitter Data using RTweet and API
+# set up directory
+setwd("C:/Users/jorda/Dropbox/PHDWork/Summer2020/EPPS7v81_DataScience/Exercise2")
+
+## Install packages need for Twitter data download
+install.packages(c("rtweet","igraph","tidyverse","ggraph","data.table"), repos = "https://cran.r-project.org")
+
+## Load packages
+library(rtweet)
+library(igraph)
+library(tidyverse)
+library(ggraph)
+library(data.table)
+library(extrafont)
+library(sysfonts)
+
+## Acquire API key and token from Twitter developer website
+# Check https://datageneration.org/adp/twitter/ for details
+
+# Create token for direct authentication to access Twitter data
+# Enter key and tokens from Twitter developer account 
+# (Account--> Apps--> detail--> Keys and tokens)
+token <- rtweet::create_token(
+  app = "App Name",
+  consumer_key <- "API Key Here",
+  consumer_secret <- "API Secret Key Here",
+  access_token <- "Twitter Access Token Here",
+  access_secret <- "Secret Access Token Here")
+
+## Check token
+rtweet::get_token()
+
+## search for 1000 tweets about the Dallas Police Department in English
+dpd <- rtweet::search_tweets(q = "DallasPD", n = 1000, lang = "en")
+
+#export the file so you do not have to download multiple times from Twitter (they limit usage)
+write.csv("dpdtweets.csv")
+
+## plot time series of tweets frequency
+png(file="dpdtweetfrequency.png", width=12, height=8, units="in", res=300)
+ts_plot(dpd, by = "hour") + 
+  theme_bw()
+dev.off()
+```
+![Imgur](https://i.imgur.com/PIsA8Fw.png)
+The plot I created shows tweet counts for every hour for about 44 hours beginning the night of June 14, 2020 (note: the time zone tweet data are stored in is not US central time). You can change how this looks by changing the by option in the ts_plot command to minutes or even seconds,  but for only 1,000 tweets spread out over two days, I decided to produce a smoother plot. Of course, if you wanted to look at variation within an hour because of an event that took place at 12:17, you could do so to see how that changes the time series. 
+
+The next chunk of code will create an igraph that plots the network of people that have been tweeting about the Dallas Police Department in the collected data. Feel free to use whichever font you wish, I just made use of a Windows font but you can swap it out for a Google font if there is one you prefer. One thing to consider is the number of tweets and users you are trying to plot. Plotting for 1000 tweets did take my computer some time, so make sure to do three things 1) set up your code and labels correctly the first time, 2) export the igraph to an image or pdf, and 3) test run the program with a subset of the data if you just want to see what it looks like.
+```
+## Create igraph object from Twitter data using user id and mentioned id.
+## ggraph draws the network graph in different layouts (12). 
+
+filter(dpd, retweet_count > 0 ) %>% 
+  select(screen_name, mentions_screen_name) %>%
+  unnest(mentions_screen_name) %>% 
+  filter(!is.na(mentions_screen_name)) %>% 
+  graph_from_data_frame() -> dpd_g
+V(dpd_g)$node_label <- unname(ifelse(degree(rdt_g)[V(rdt_g)] > 20, names(V(rdt_g)), "")) 
+V(dpd_g)$node_size <- unname(ifelse(degree(rdt_g)[V(rdt_g)] > 20, degree(rdt_g), 0)) 
+
+windowsFonts(JP2 = windowsFont("MS Gothic"))
+
+# ggraph layouts: 'star', 'circle', 'gem', 'dh', 'graphopt', 'grid', 'mds', 
+# 'randomly', 'fr', 'kk', 'drl', 'lgl'
+# Davidson-Harel algorithm
+# Try also fr (fruchterman reingold)
+png(file="dpdtweets.png", width=12, height=8, units="in", res=300)
+ggraph(dpd_g, layout = 'kk') + 
+  geom_edge_arc(edge_width=0.1, aes(alpha=..index..)) +
+  geom_node_label(aes(label=node_label, size=node_size),
+                  label.size=0, fill="#ffffff66", segment.colour="light blue",
+                  color="red", repel=TRUE, family="JP2") +
+  coord_fixed() +
+  scale_size_area(trans="sqrt") +
+  labs(title="Dallas Police Department Twitter Plot", subtitle="Edges=volume of retweets. Screenname size=influence") +
+  theme_graph(base_family="JP2") +
+  theme(legend.position="none") 
+dev.off()
+```
+![Imgur](https://i.imgur.com/CJQsOc2.png)
+So, this comes out a little messier than I would have liked, but what you can see is how close some user networks are to the Dallas Police Department. CNSDallas is a reporter working in Dallas, and Wylie_H_Dallas is someone that refers to themself as the guardian of Dallas. A little bizarre, but I guess that's the Twitterverse for you. These accounts, along with the DallasPD_Truth account, which claims to only spread facts with the goal of exposing the truth behind DPD, have a lot of influence. More on the outskirts are Dallas Mayor Eric Johnson's personal account (Johnson4Dallas) and his official position account (DallasMayor).
+
